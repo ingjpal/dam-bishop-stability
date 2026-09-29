@@ -1,18 +1,19 @@
-# Dam slope stability (Bishop simplified)
+# Dam stability classroom tools
 
-Classroom app for circular-slip Bishop analysis of:
+Two calculation tools in one app:
 
-- a homogeneous earthfill dam
-- an earthfill dam with a clay core
-- a rockfill dam with a concrete face (CFRD)
+1. **Earthfill / rockfill (Bishop)** — circular-slip Bishop analysis of a homogeneous earthfill dam, an earthfill dam with a clay core, and a rockfill dam with a concrete face (CFRD).
+2. **Concrete gravity dam** — overturning, sliding, foundation bearing and heel tension for a triangular gravity section.
 
-Set the water condition, choose a single trial circle or a grid search, edit geometry and materials, then press **Run analysis**. The plot and factor of safety appear on the right.
+Choose the tool at the top, set the inputs, then press **Run analysis**. The plot and safety checks appear on the right.
 
-Units: lengths in m, unit weights in kN/m³, cohesion in kPa.
+Units: lengths in m, unit weights in kN/m³, stresses and cohesion in kPa.
 
 ## Students — open in the browser
 
 Once the instructor has deployed the app, use the Streamlit URL they share. No Python install is required.
+
+Source repository: [https://github.com/ingjpal/dam-bishop-stability](https://github.com/ingjpal/dam-bishop-stability)
 
 ## Run on your own computer
 
@@ -25,7 +26,7 @@ streamlit run app.py
 
 The app opens at [http://localhost:8501](http://localhost:8501).
 
-Grid search is slower than a single circle (often one to a few minutes).
+Bishop grid search is slower than a single circle (often one to a few minutes). The gravity-dam check is immediate.
 
 ## Instructor — publish a URL for the class
 
@@ -34,4 +35,4 @@ Grid search is slower than a single circle (often one to a few minutes).
 3. **New app** → select this repo → main file `app.py` → Deploy.
 4. Share the `*.streamlit.app` link with students.
 
-The calculation engine is `earthfill_dam_bishop.py`. The interface is `app.py`.
+Calculation engines: `earthfill_dam_bishop.py` and `gravity_dam.py`. Interface: `app.py`.
