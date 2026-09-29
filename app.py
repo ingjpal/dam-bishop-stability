@@ -201,7 +201,7 @@ with left:
     mode = st.radio(
         "Slip surface",
         ("Single trial circle", "Grid search for critical circle"),
-        index=1 if b.FIND_CRITICAL_CIRCLE else 0,
+        index=0,
         help="Grid search tests many centres and radii. It is slower (often 1–3 minutes).",
     )
     st.markdown("**Dams to include**")
@@ -313,7 +313,7 @@ with left:
         )
         y_max = number("Plot y-axis upper limit (m)", b.Y_AXIS_MAX, "ymax", step=5.0)
 
-    run = st.button("Run analysis", type="primary", use_container_width=True)
+    run = st.button("Run analysis", type="primary", width="stretch")
 
 ui = {
     "rapid": water == "Rapid drawdown",
@@ -362,13 +362,17 @@ with right:
     text_slot = st.empty()
     log_slot = st.empty()
 
-    if "figure" in st.session_state:
-        plot_slot.pyplot(st.session_state["figure"], use_container_width=True)
+    if "figure_png" in st.session_state:
+        plot_slot.image(st.session_state["figure_png"], width="stretch")
     else:
         plot_slot.info("Set the options on the left and press **Run analysis**.")
 
     if "summary" in st.session_state:
         text_slot.code(st.session_state["summary"], language=None)
+
+    if "log" in st.session_state:
+        with log_slot.expander("Calculation log"):
+            st.text(st.session_state["log"])
 
     if run:
         if not (en_hom or en_core or en_cfrd):
@@ -388,11 +392,13 @@ with right:
                 except Exception as exc:
                     st.exception(exc)
                 else:
-                    st.session_state["figure"] = fig
+                    png = io.BytesIO()
+                    fig.savefig(png, format="png", dpi=140, bbox_inches="tight")
+                    plt.close(fig)
+                    st.session_state["figure_png"] = png.getvalue()
                     st.session_state["summary"] = format_results(cases)
                     st.session_state["log"] = buf.getvalue()
-                    plot_slot.pyplot(fig, use_container_width=True)
+                    plot_slot.image(st.session_state["figure_png"], width="stretch")
                     text_slot.code(st.session_state["summary"], language=None)
                     with log_slot.expander("Calculation log"):
                         st.text(st.session_state["log"])
-                    plt.close(fig)
