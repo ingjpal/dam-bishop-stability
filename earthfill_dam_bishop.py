@@ -25,46 +25,47 @@ Units: lengths in m, unit weights in kN/m3, cohesion in kPa (= kN/m2).
 # (flat base; first vertex need not be repeated), otherwise a trapezoid
 # is built from 'geometry'.
 # Slip circle: give centre + radius, or point_a / point_b + center_x.
-# The circle and search grid are placed on the inner face in rapid
-# drawdown and on the outer face in steady seepage.
+# The app places that circle on the downstream face for inner-slope
+# analysis and on the upstream face for rapid-drawdown analysis.
 # A custom seepage surface can still be set per dam with 'phreatic_line'.
 #
 # ========================================================================
 # 1. WATER CONDITION
 # ========================================================================
-# Rapid drawdown: the reservoir is emptied, the blue water is not drawn,
-# and the search grid sits on the inner (upstream) slope. Pore pressures
-# still follow a phreatic line that starts at NORMAL_RESERVOIR_LEVEL.
-# Steady seepage: pool and phreatic line both start at NORMAL_RESERVOIR_LEVEL,
-# and the search grid sits on the outer (downstream) slope.
+# Rapid drawdown analysis: the reservoir is emptied, the blue water is
+# not drawn, and the trial circle sits on the upstream slope. Pore
+# pressures still follow a phreatic line that starts at the first point
+# of that dam.
+# Inner slope analysis: the pool elevation is the first phreatic-line y
+# of each dam, and the trial circle sits on the downstream slope.
 #
-# True  -> empty reservoir (0 m), no blue water, inner-slope search
-# False -> pool and phreatic at NORMAL_RESERVOIR_LEVEL, outer-slope search
+# True  -> empty reservoir (0 m), no blue water, upstream-slope circle
+# False -> pool at the first phreatic y of each dam, downstream-slope circle
 
 RAPID_DRAWDOWN = False
-NORMAL_RESERVOIR_LEVEL = 20.0    # m  (operating / pre-drawdown pool)
+NORMAL_RESERVOIR_LEVEL = 100.0   # m  (operating / pre-drawdown pool)
 
 # Phreatic line as (x, y) coordinates in m, from the upstream face to
 # the downstream toe. The first point is the start elevation of seepage.
 # Used unless a dam block sets its own 'phreatic_line'.
 PHREATIC_LINE_HOMOGENEOUS = [
-    (40.0, 16.0),
-    (53.0,  7.2),
-    (106.0, 0.0),
+    (200.0, 80.0),
+    (265.0, 36.0),
+    (530.0,  0.0),
 ]
 PHREATIC_LINE_CLAY_CORE = [
-    (40.0, 16.0),
-    (48.0, 14.4),
-    (58.0,  4.0),
-    (106.0, 0.0),
+    (200.0, 80.0),
+    (240.0, 72.0),
+    (290.0, 20.0),
+    (530.0,  0.0),
 ]
 # Concrete face: starts at the reservoir waterline on the slab, then
 # drops immediately behind the face so the rockfill stays nearly dry.
 PHREATIC_LINE_CFRD = [
-    (50.0, 20.0),
-    (51.0,  2.0),
-    (70.0,  1.0),
-    (106.0, 0.0),
+    (250.0, 100.0),
+    (255.0,  10.0),
+    (350.0,   5.0),
+    (530.0,   0.0),
 ]
 
 # Foundation below the dam base. Deep slip circles may pass through it.
@@ -75,8 +76,8 @@ FOUNDATION = {
     'friction_angle': 25.0,      # degrees
     'unit_weight': 21.0,         # kN/m3
     'saturated_unit_weight': 22.0,
-    'thickness': 15.0,           # m  below the dam base
-    'extra_width': 15.0,         # m  beyond each toe
+    'thickness': 75.0,           # m  below the dam base
+    'extra_width': 75.0,         # m  beyond each toe
 }
 
 # ========================================================================
@@ -90,17 +91,17 @@ FIND_CRITICAL_CIRCLE = True
 # Used only if FIND_CRITICAL_CIRCLE is True.
 # lower_left_x / lower_left_y set the left and bottom edges of the grid.
 GRID_CONFIG = {
-    'lower_left_x': 40.0,        # m  shift this to move the grid horizontally
-    'lower_left_y': 22.0,        # m
-    'grid_width': 80.0,          # m
-    'grid_height': 44.0,         # m
-    'grid_spacing_x': 4.0,       # m
-    'grid_spacing_y': 4.0,       # m
+    'lower_left_x': 200.0,       # m  shift this to move the grid horizontally
+    'lower_left_y': 110.0,       # m
+    'grid_width': 400.0,         # m
+    'grid_height': 220.0,        # m
+    'grid_spacing_x': 20.0,      # m
+    'grid_spacing_y': 20.0,      # m
 }
 
 RADIUS_CONFIG = {
-    'min_radius': 16.0,          # m
-    'max_radius': 26.0,          # m
+    'min_radius': 80.0,          # m
+    'max_radius': 130.0,         # m
     'num_radii': 8,
 }
 
@@ -116,11 +117,11 @@ HOMOGENEOUS_DAM = {
     'enabled': True,
     'title': 'Homogeneous earthfill',
 
-    # 'polygon': [(0, 0), (50, 20), (56, 20), (106, 0)],
+    # 'polygon': [(0, 0), (250, 100), (280, 100), (530, 0)],
     'polygon': None,
     'geometry': {
-        'height': 20.0,              # m
-        'crest_width': 6.0,          # m
+        'height': 100.0,             # m
+        'crest_width': 30.0,         # m
         'upstream_slope': 2.5,       # H:V
         'downstream_slope': 2.5,     # H:V
         'left_toe_x': 0.0,           # m
@@ -138,12 +139,12 @@ HOMOGENEOUS_DAM = {
     'phreatic_line': None,           # None = PHREATIC_LINE_HOMOGENEOUS above
     'include_reservoir_water_weight': True,
 
-    # Circle is mirrored onto the inner face in rapid drawdown and onto
-    # the outer face in steady seepage.
+    # Circle is placed on the downstream face for inner-slope analysis
+    # and on the upstream face for rapid-drawdown analysis.
     'slip_circle': {
-        'center_x': 21.0,            # m  (reference: above the upstream face)
-        'center_y': 40.6,            # m
-        'radius': 38.9,              # m
+        'center_x': 105.0,           # m  (reference: above the upstream face)
+        'center_y': 203.0,           # m
+        'radius': 194.5,             # m
     },
 }
 
@@ -155,22 +156,22 @@ CLAY_CORE_DAM = {
     'enabled': True,
     'title': 'Earthfill with clay core',
 
-    # 'polygon': [(0, 0), (50, 20), (56, 20), (106, 0)],
+    # 'polygon': [(0, 0), (250, 100), (280, 100), (530, 0)],
     'polygon': None,
     'geometry': {
-        'height': 20.0,              # m
-        'crest_width': 6.0,          # m
+        'height': 100.0,             # m
+        'crest_width': 30.0,         # m
         'upstream_slope': 2.5,       # H:V
         'downstream_slope': 2.5,     # H:V
         'left_toe_x': 0.0,           # m
         'base_y': 0.0,               # m
     },
 
-    # 'core_polygon': [(48, 0), (51.5, 20), (54.5, 20), (58, 0)],
+    # 'core_polygon': [(240, 0), (257.5, 100), (272.5, 100), (290, 0)],
     'core_polygon': None,
     'core_geometry': {
-        'crest_width': 3.0,          # m
-        'base_width': 10.0,          # m
+        'crest_width': 15.0,         # m
+        'base_width': 50.0,          # m
         'center_x': None,            # None = dam centreline
     },
 
@@ -192,12 +193,12 @@ CLAY_CORE_DAM = {
     'phreatic_line': None,           # None = PHREATIC_LINE_CLAY_CORE above
     'include_reservoir_water_weight': True,
 
-    # Circle is mirrored onto the inner face in rapid drawdown and onto
-    # the outer face in steady seepage.
+    # Circle is placed on the downstream face for inner-slope analysis
+    # and on the upstream face for rapid-drawdown analysis.
     'slip_circle': {
-        'center_x': 21.0,            # m  (reference: above the upstream face)
-        'center_y': 40.6,            # m
-        'radius': 38.9,              # m
+        'center_x': 105.0,           # m  (reference: above the upstream face)
+        'center_y': 203.0,           # m
+        'radius': 194.5,             # m
     },
 }
 
@@ -211,8 +212,8 @@ ROCKFILL_CFRD_DAM = {
 
     'polygon': None,
     'geometry': {
-        'height': 20.0,              # m
-        'crest_width': 6.0,          # m
+        'height': 100.0,             # m
+        'crest_width': 30.0,         # m
         'upstream_slope': 2.5,       # H:V
         'downstream_slope': 2.5,     # H:V
         'left_toe_x': 0.0,           # m
@@ -226,6 +227,19 @@ ROCKFILL_CFRD_DAM = {
         'unit_weight': 21.0,         # kN/m3
         'saturated_unit_weight': 22.0,
     },
+    'core_polygon': None,
+    'core_geometry': {
+        'crest_width': 15.0,         # m
+        'base_width': 50.0,          # m
+        'center_x': None,            # None = dam centreline
+    },
+    'core': {
+        'name': 'Clay core',
+        'cohesion': 12.0,            # kPa
+        'friction_angle': 14.0,      # degrees
+        'unit_weight': 19.0,         # kN/m3
+        'saturated_unit_weight': 20.0,
+    },
     'foundation': FOUNDATION,
     'phreatic_line': None,           # None = PHREATIC_LINE_CFRD above
     'include_reservoir_water_weight': True,
@@ -234,14 +248,14 @@ ROCKFILL_CFRD_DAM = {
     # and remains after rapid drawdown, when the reservoir support is gone.
     'concrete_face': {
         'name': 'Concrete face',
-        'thickness': 0.40,           # m  (normal to the face)
+        'thickness': 2.00,           # m  (normal to the face)
         'unit_weight': 24.0,         # kN/m3
     },
 
     'slip_circle': {
-        'center_x': 21.0,            # m
-        'center_y': 40.6,            # m
-        'radius': 38.9,              # m
+        'center_x': 105.0,           # m
+        'center_y': 203.0,           # m
+        'radius': 194.5,             # m
     },
 }
 
@@ -259,7 +273,13 @@ SHOW_PLOT = True
 SAVE_FIGURE = True
 FIGURE_NAME = 'earthfill_dam_bishop.png'
 DRAW_SLICES = True
-Y_AXIS_MAX = 70.0                # m  upper limit of the plots
+REQUIRED_FS_INNER = 1.5          # PASS if Bishop FS ≥ this (inner slope)
+REQUIRED_FS_DRAWDOWN = 1.3       # PASS if Bishop FS ≥ this (rapid drawdown)
+PLOT_X_MIN = -100.0              # m  plot window
+PLOT_X_MAX = 600.0
+PLOT_Y_MIN = -50.0
+PLOT_Y_MAX = 350.0
+Y_AXIS_MAX = PLOT_Y_MAX          # kept for older call sites
 
 # ========================================================================
 # IMPLEMENTATION
@@ -959,7 +979,8 @@ ARC_COLOR = '#c0392b'
 
 
 def _draw_dam(ax, dam, core, reservoir_level, phreatic_points, title,
-              foundation_props=None, fill_name='Earthfill', concrete_face=None):
+              foundation_props=None, fill_name='Earthfill', concrete_face=None,
+              title_size=12):
     dam_c = close_polygon(dam)
     xmin, xmax, ymin, ymax = polygon_bounds(dam)
     box = foundation_box(dam, foundation_props)
@@ -1014,18 +1035,60 @@ def _draw_dam(ax, dam, core, reservoir_level, phreatic_points, title,
                 label=concrete_face.get('name', 'Concrete face'))
 
     ax.plot(dam_c[:, 0], dam_c[:, 1], 'k-', lw=1.8, zorder=6)
-    ax.set_title(title, fontsize=18, fontweight='bold')
+    ax.set_title(title, fontsize=title_size, fontweight='bold')
     ax.set_xlabel('x (m)')
     ax.set_ylabel('y (m)')
     ax.set_aspect('equal', adjustable='box')
     ax.grid(True, alpha=0.3)
 
 
+def required_fs():
+    """Minimum Bishop FS for a PASS on the active slope analysis."""
+    return REQUIRED_FS_DRAWDOWN if RAPID_DRAWDOWN else REQUIRED_FS_INNER
+
+
+def _draw_slice_lines(ax, slices):
+    if not DRAW_SLICES or not slices:
+        return
+    for sl in slices:
+        ax.plot([sl['x'], sl['x']], [sl['y_base'], sl['y_top']],
+                color='0.35', lw=0.55, alpha=0.75, zorder=7)
+
+
+def trial_slices_for_case(case):
+    """Vertical Bishop slices for the trial or reported circle."""
+    result = case.get('result')
+    if result and result.get('slices'):
+        return result['slices']
+    prv = case.get('preview_circle')
+    if not prv:
+        return None
+    cx, cy, radius = prv['center_x'], prv['center_y'], prv['radius']
+    dam = case['dam']
+    found = case.get('foundation')
+    ymin = polygon_bounds(dam)[2]
+    intervals = valid_slice_intervals(cx, cy, radius, dam, found, ymin)
+    if not intervals:
+        return None
+    slide = case.get('slide_direction', 'downstream')
+    x_range = (min(intervals, key=lambda ab: ab[0]) if slide == 'upstream'
+               else max(intervals, key=lambda ab: ab[0]))
+    return assemble_slices(
+        cx, cy, radius, dam, case['fill'],
+        case.get('core'), case.get('core_props'), found,
+        case.get('phreatic'), case.get('reservoir_level'),
+        case.get('include_water', True),
+        NUM_SLICES, x_range=x_range,
+        slide_direction=slide,
+        concrete_face=case.get('concrete_face'),
+    )
+
+
 def _draw_result(ax, result, fs_corner='upper right'):
     if result is None:
         ax.text(0.5, 0.55, 'No valid slip surface\nfor this circle',
                 transform=ax.transAxes, ha='center', va='center',
-                fontsize=12, color='firebrick',
+                fontsize=9, color='firebrick',
                 bbox=dict(boxstyle='round', facecolor='white', edgecolor='firebrick'))
         return
 
@@ -1037,24 +1100,25 @@ def _draw_result(ax, result, fs_corner='upper right'):
     ax.plot(cx, cy, 'o', color=ARC_COLOR, ms=8, zorder=9)
     ax.plot([cx, xs[0]], [cy, ys[0]], color=ARC_COLOR, lw=0.8, ls=':', alpha=0.7)
     ax.plot([cx, xs[-1]], [cy, ys[-1]], color=ARC_COLOR, lw=0.8, ls=':', alpha=0.7)
+    _draw_slice_lines(ax, result.get('slices'))
 
-    if DRAW_SLICES:
-        for sl in result['slices'][:: max(1, len(result['slices']) // 16)]:
-            ax.plot([sl['x'], sl['x']], [sl['y_base'], sl['y_top']],
-                    color='0.35', lw=0.6, alpha=0.7, zorder=7)
-
+    req = required_fs()
+    passed = result['fos'] >= req
+    verdict = 'PASS' if passed else 'FAIL'
+    box_face = '#d5f5e3' if passed else '#fadbd8'
     if fs_corner == 'upper left':
         tx, ty, ha, va = 0.02, 0.98, 'left', 'top'
     else:
         tx, ty, ha, va = 0.98, 0.98, 'right', 'top'
     ax.text(
         tx, ty,
-        f"FS = {result['fos']:.3f}\n"
+        f"FS = {result['fos']:.3f}  {verdict}\n"
+        f"need ≥ {req:.2f}\n"
         f"centre ({cx:.1f}, {cy:.1f}) m\n"
         f"R = {r:.1f} m",
         transform=ax.transAxes, ha=ha, va=va,
-        fontsize=12, fontweight='bold', zorder=12,
-        bbox=dict(boxstyle='round,pad=0.4', facecolor='#fff6b0',
+        fontsize=9, fontweight='bold', zorder=12,
+        bbox=dict(boxstyle='round,pad=0.4', facecolor=box_face,
                   edgecolor=ARC_COLOR, linewidth=1.4),
     )
 
@@ -1066,49 +1130,197 @@ def _place_materials_legend(ax, grid_on_left, grid_y_mid):
     y_frac = min(max(y_frac, 0.18), 0.82)
     if grid_on_left:
         ax.legend(loc='center right', bbox_to_anchor=(0.98, y_frac),
-                  fontsize=12, framealpha=0.92)
+                  fontsize=8, framealpha=0.92)
     else:
         ax.legend(loc='center left', bbox_to_anchor=(0.02, y_frac),
-                  fontsize=12, framealpha=0.92)
+                  fontsize=8, framealpha=0.92)
+
+
+GRID_FIGSIZE = (10.4, 7.2)
+
+
+def grid_figure(n_used=4):
+    """2x2 subplot grid. Unused cells are hidden."""
+    fig, axes = plt.subplots(2, 2, figsize=GRID_FIGSIZE)
+    flat = list(axes.ravel())
+    n_used = max(0, min(int(n_used), 4))
+    for ax in flat[n_used:]:
+        ax.set_visible(False)
+        ax.axis('off')
+    return fig, flat
+
+
+def hide_unused_axes(axes, n_used):
+    for ax in axes[n_used:]:
+        ax.set_visible(False)
+        ax.axis('off')
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+
+def apply_plot_limits(ax):
+    x0, x1 = float(PLOT_X_MIN), float(PLOT_X_MAX)
+    y0, y1 = float(PLOT_Y_MIN), float(PLOT_Y_MAX)
+    if x1 < x0:
+        x0, x1 = x1, x0
+    if y1 < y0:
+        y0, y1 = y1, y0
+    if x1 == x0:
+        x1 = x0 + 1.0
+    if y1 == y0:
+        y1 = y0 + 1.0
+    ax.set_xlim(x0, x1)
+    ax.set_ylim(y0, y1)
+
+
+def draw_analysis_panel(ax, case, grid_cfg=None):
+    if grid_cfg is None:
+        grid_cfg = placed_grid_config(case['dam'])
+    grid_mid_x = grid_cfg['lower_left_x'] + 0.5 * grid_cfg['grid_width']
+    grid_y_mid = grid_cfg['lower_left_y'] + 0.5 * grid_cfg['grid_height']
+    dam = case['dam']
+    base = case['title'].split('—')[0].strip()
+    _draw_dam(ax, dam, case['core'], case['reservoir_level'], case['phreatic'],
+              base, case.get('foundation'),
+              fill_name=case['fill']['name'],
+              concrete_face=case.get('concrete_face'))
+    xmin, xmax, ymin, ymax = polygon_bounds(dam)
+    box = foundation_box(dam, case.get('foundation'))
+    grid_on_left = grid_mid_x <= 0.5 * (xmin + xmax)
+    fs_corner = 'upper right' if grid_on_left else 'upper left'
+    _draw_result(ax, case['result'], fs_corner=fs_corner)
+    y_top = ymax
+    if case['result'] is not None:
+        y_top = max(y_top, case['result']['center'][1])
+    pad = 0.08 * max(xmax - xmin, 1.0)
+    x0 = box['xmin'] if box is not None else xmin
+    x1 = box['xmax'] if box is not None else xmax
+    y0 = box['ybot'] if box is not None else ymin
+    apply_plot_limits(ax)
+    _place_materials_legend(ax, grid_on_left, grid_y_mid)
 
 
 def plot_analyses(cases, save_path=None):
-    """Plot one or more dams stacked vertically."""
-    n = len(cases)
-    fig, axes = plt.subplots(n, 1, figsize=(10.5, 5.6 * n), squeeze=False)
-    axes = axes[:, 0]
+    """Plot dams on a 2x2 grid."""
+    fig, axes = grid_figure(len(cases))
     grid_cfg = placed_grid_config(cases[0]['dam'])
-    grid_mid_x = grid_cfg['lower_left_x'] + 0.5 * grid_cfg['grid_width']
-    grid_y_mid = grid_cfg['lower_left_y'] + 0.5 * grid_cfg['grid_height']
-
     for ax, case in zip(axes, cases):
-        dam = case['dam']
-        core = case['core']
-        _draw_dam(ax, dam, core, case['reservoir_level'], case['phreatic'],
-                 case['title'], case.get('foundation'),
-                 fill_name=case['fill']['name'],
-                 concrete_face=case.get('concrete_face'))
-        xmin, xmax, ymin, ymax = polygon_bounds(dam)
-        box = foundation_box(dam, case.get('foundation'))
-        grid_on_left = grid_mid_x <= 0.5 * (xmin + xmax)
-        fs_corner = 'upper right' if grid_on_left else 'upper left'
-        _draw_result(ax, case['result'], fs_corner=fs_corner)
-        y_top = ymax
-        if case['result'] is not None:
-            y_top = max(y_top, case['result']['center'][1])
-        pad = 0.08 * max(xmax - xmin, 1.0)
-        x0 = box['xmin'] if box is not None else xmin
-        x1 = box['xmax'] if box is not None else xmax
-        y0 = box['ybot'] if box is not None else ymin
-        ax.set_xlim(x0 - 0.12 * (xmax - xmin), x1 + pad)
-        ax.set_ylim(y0 - 0.04 * (y_top - y0 + 1), Y_AXIS_MAX)
-        _place_materials_legend(ax, grid_on_left, grid_y_mid)
-
+        draw_analysis_panel(ax, case, grid_cfg)
     fig.tight_layout()
     if save_path:
         fig.savefig(save_path, dpi=160, bbox_inches='tight')
         print(f'  Figure saved: {save_path}')
     return fig
+
+
+def geometry_case(cfg):
+    """Dam, water and trial circle for a geometry preview (no Bishop FS)."""
+    slide = active_slide_direction()
+    dam, core = resolve_geometry(cfg)
+    cx, cy, radius = resolve_slip_circle(cfg['slip_circle'])
+    core_props = cfg.get('core') if core is not None else None
+    phreatic = resolve_phreatic_points(cfg, dam, core)
+    reservoir_level, phreatic_from_level = water_from_phreatic(dam, phreatic)
+    return {
+        'title': case_title(cfg),
+        'dam': dam,
+        'core': core,
+        'fill': cfg['fill'],
+        'core_props': core_props,
+        'reservoir_level': reservoir_level,
+        'phreatic_from_level': phreatic_from_level,
+        'phreatic': phreatic,
+        'slide_direction': slide,
+        'rapid_drawdown': RAPID_DRAWDOWN,
+        'foundation': cfg.get('foundation'),
+        'concrete_face': cfg.get('concrete_face'),
+        'include_water': cfg.get('include_reservoir_water_weight', True),
+        'result': None,
+        'preview_circle': {
+            'center_x': cx, 'center_y': cy, 'radius': radius,
+        },
+    }
+
+
+def _draw_preview_circle(ax, case):
+    preview = case['preview_circle']
+    cx = preview['center_x']
+    cy = preview['center_y']
+    radius = preview['radius']
+    theta = np.linspace(0.0, 2.0 * np.pi, 240)
+    ax.plot(cx + radius * np.cos(theta), cy + radius * np.sin(theta),
+            color=ARC_COLOR, lw=1.8, ls='--', zorder=8, label='Trial circle')
+    ax.plot(cx, cy, 'o', color=ARC_COLOR, ms=7, zorder=9)
+    _draw_slice_lines(ax, trial_slices_for_case(case))
+
+
+def draw_geometry_panel(ax, case, show_grid=False, grid_cfg=None):
+    if grid_cfg is None:
+        grid_cfg = placed_grid_config(case['dam'])
+    grid_mid_x = grid_cfg['lower_left_x'] + 0.5 * grid_cfg['grid_width']
+    grid_y_mid = grid_cfg['lower_left_y'] + 0.5 * grid_cfg['grid_height']
+    dam = case['dam']
+    base = case['title'].split('—')[0].strip()
+    _draw_dam(ax, dam, case['core'], case['reservoir_level'], case['phreatic'],
+              base, case.get('foundation'),
+              fill_name=case['fill']['name'],
+              concrete_face=case.get('concrete_face'))
+    xmin, xmax, ymin, ymax = polygon_bounds(dam)
+    box = foundation_box(dam, case.get('foundation'))
+    grid_on_left = grid_mid_x <= 0.5 * (xmin + xmax)
+    y_top = ymax
+    x0 = box['xmin'] if box is not None else xmin
+    x1 = box['xmax'] if box is not None else xmax
+    y0 = box['ybot'] if box is not None else ymin
+    if show_grid:
+        ll_x = grid_cfg['lower_left_x']
+        ll_y = grid_cfg['lower_left_y']
+        width = grid_cfg['grid_width']
+        height = grid_cfg['grid_height']
+        ax.add_patch(Rectangle(
+            (ll_x, ll_y), width, height,
+            linewidth=1.4, edgecolor='royalblue', facecolor='none',
+            linestyle='--', zorder=4, label='Search grid',
+        ))
+        x0 = min(x0, ll_x)
+        x1 = max(x1, ll_x + width)
+        y_top = max(y_top, ll_y + height)
+    elif case.get('preview_circle'):
+        _draw_preview_circle(ax, case)
+        prv = case['preview_circle']
+        y_top = max(y_top, prv['center_y'])
+    pad = 0.08 * max(xmax - xmin, 1.0)
+    apply_plot_limits(ax)
+    _place_materials_legend(ax, grid_on_left, grid_y_mid)
+
+
+def plot_geometry(cases, save_path=None, show_grid=False, grid_cfg=None):
+    """Cross-section only on a 2x2 grid: dam, water, phreatic, trial circle or search grid."""
+    if grid_cfg is None:
+        grid_cfg = placed_grid_config(cases[0]['dam'])
+    fig, axes = grid_figure(len(cases))
+    for ax, case in zip(axes, cases):
+        draw_geometry_panel(ax, case, show_grid=show_grid, grid_cfg=grid_cfg)
+    fig.tight_layout()
+    if save_path:
+        fig.savefig(save_path, dpi=160, bbox_inches='tight')
+    return fig
+
+
+def preview(return_figure=False):
+    """Draw enabled dams without running Bishop."""
+    configs = enabled_dams()
+    cases = [geometry_case(cfg) for cfg in configs]
+    show_grid = FIND_CRITICAL_CIRCLE
+    grid_cfg = placed_grid_config(resolve_geometry(configs[0])[0])
+    fig = plot_geometry(cases, show_grid=show_grid, grid_cfg=grid_cfg)
+    if return_figure:
+        return cases, fig
+    if SHOW_PLOT:
+        plt.show()
+    else:
+        plt.close(fig)
+    return cases
 
 
 # ---------- reporting -------------------------------------------------------
@@ -1168,14 +1380,17 @@ def print_case(case):
     print(f'  Circle radius: {result["radius"]:.3f} m')
     print(f'  Slices used  : {len(result["slices"])}')
     print(f'  Factor of safety (Bishop simplified): {result["fos"]:.4f}')
+    req = required_fs()
+    print(f'  Required FS  : {req:.2f}   '
+          f'[{"PASS" if result["fos"] >= req else "FAIL"}]')
 
 
 def resolve_water_levels(rapid_drawdown=None, normal_level=None, drawdown_level=None):
     """
     Return (reservoir_level, phreatic_from_level) for the chosen condition.
 
-    Rapid drawdown: empty reservoir (0 m / dam base), phreatic from the
-    normal pool. Steady seepage: both follow NORMAL_RESERVOIR_LEVEL.
+    Prefer water_from_phreatic() so each dam uses the first point of its
+    phreatic line. This helper is the fallback when no polyline is given.
     """
     rapid = RAPID_DRAWDOWN if rapid_drawdown is None else rapid_drawdown
     normal = NORMAL_RESERVOIR_LEVEL if normal_level is None else normal_level
@@ -1185,20 +1400,46 @@ def resolve_water_levels(rapid_drawdown=None, normal_level=None, drawdown_level=
     return normal, None
 
 
-def cfrd_phreatic_from_waterline(dam, points, reservoir_level):
+def phreatic_start_level(phreatic, fallback=None):
+    """Elevation of the first phreatic point (the waterline)."""
+    if phreatic:
+        return float(phreatic[0][1])
+    if fallback is not None:
+        return float(fallback)
+    return float(NORMAL_RESERVOIR_LEVEL)
+
+
+def water_from_phreatic(dam, phreatic):
     """
-    Put the first phreatic point on the upstream face at the waterline,
-    then keep the remaining points as the low seepage line behind the slab.
+    Inner slope analysis: reservoir = first phreatic y.
+    Rapid drawdown analysis: empty pool (dam base); phreatic held from that y.
+    """
+    ymin = polygon_bounds(dam)[2]
+    level = phreatic_start_level(phreatic)
+    if RAPID_DRAWDOWN:
+        return ymin, level
+    return level, None
+
+
+def cfrd_phreatic_from_waterline(dam, points, reservoir_level=None):
+    """
+    Snap the first phreatic point onto the upstream face at its own
+    elevation (the reservoir waterline), then keep the rest of the line.
     """
     pts = [list(p) for p in points]
     xmin, xmax, ymin, ymax = polygon_bounds(dam)
-    if reservoir_level is not None and reservoir_level > ymin + 0.05:
-        level = reservoir_level
+    if pts:
+        level = float(pts[0][1])
+    elif reservoir_level is not None:
+        level = float(reservoir_level)
     else:
         level = NORMAL_RESERVOIR_LEVEL
-    level = min(max(float(level), ymin), ymax)
+    level = min(max(level, ymin), ymax)
     x_start = x_on_upstream_face(dam, level)
-    pts[0] = [x_start, level]
+    if not pts:
+        pts = [[x_start, level]]
+    else:
+        pts[0] = [x_start, level]
     if len(pts) >= 2 and pts[1][0] <= x_start + 0.2:
         pts[1][0] = x_start + 1.0
     return [tuple(p) for p in pts]
@@ -1217,15 +1458,12 @@ def resolve_phreatic_points(cfg, dam, core):
     if phreatic is not None:
         pts = list(phreatic)
         if cfg.get('concrete_face'):
-            reservoir_level, _ = resolve_water_levels()
-            if RAPID_DRAWDOWN:
-                reservoir_level = polygon_bounds(dam)[2]
-            pts = cfrd_phreatic_from_waterline(dam, pts, reservoir_level)
+            pts = cfrd_phreatic_from_waterline(dam, pts)
         return pts
-    reservoir_level, phreatic_from_level = resolve_water_levels()
+    _, phreatic_from_level = resolve_water_levels()
     seepage_level = (phreatic_from_level
                      if phreatic_from_level is not None
-                     else reservoir_level)
+                     else NORMAL_RESERVOIR_LEVEL)
     return default_phreatic_line(dam, seepage_level, core)
 
 
@@ -1237,19 +1475,13 @@ def case_title(cfg):
     base = cfg.get('title', 'Earthfill dam')
     if ' — ' in base:
         base = base.split(' — ')[0]
-    face = ('inner (upstream) slope' if RAPID_DRAWDOWN
-            else 'outer (downstream) slope')
+    face = ('rapid drawdown (upstream)' if RAPID_DRAWDOWN
+            else 'inner slope (downstream)')
     return f'{base} — {face}'
 
 
 def circle_on_active_face(cx, cy, radius, dam):
-    """Mirror the trial circle onto the inner or outer face."""
-    xmin, xmax, *_ = polygon_bounds(dam)
-    xmid = 0.5 * (xmin + xmax)
-    if RAPID_DRAWDOWN and cx > xmid:
-        cx = 2.0 * xmid - cx
-    elif (not RAPID_DRAWDOWN) and cx < xmid:
-        cx = 2.0 * xmid - cx
+    """Kept for older scripts. The app uses the entered centre as-is."""
     return cx, cy, radius
 
 
@@ -1273,13 +1505,9 @@ def analyse_dam(cfg):
     slide = active_slide_direction()
     dam, core = resolve_geometry(cfg)
     cx, cy, radius = resolve_slip_circle(cfg['slip_circle'])
-    cx, cy, radius = circle_on_active_face(cx, cy, radius, dam)
     core_props = cfg.get('core') if core is not None else None
-    reservoir_level, phreatic_from_level = resolve_water_levels()
-    ymin = polygon_bounds(dam)[2]
-    if RAPID_DRAWDOWN:
-        reservoir_level = ymin
     phreatic = resolve_phreatic_points(cfg, dam, core)
+    reservoir_level, phreatic_from_level = water_from_phreatic(dam, phreatic)
 
     result = analyse_circle(
         dam=dam,
@@ -1317,11 +1545,8 @@ def prepare_dam(cfg):
     """Geometry, materials and water for one dam, without evaluating a circle."""
     slide = active_slide_direction()
     dam, core = resolve_geometry(cfg)
-    reservoir_level, phreatic_from_level = resolve_water_levels()
-    ymin = polygon_bounds(dam)[2]
-    if RAPID_DRAWDOWN:
-        reservoir_level = ymin
     phreatic = resolve_phreatic_points(cfg, dam, core)
+    reservoir_level, phreatic_from_level = water_from_phreatic(dam, phreatic)
     core_props = cfg.get('core') if core is not None else None
     return {
         'title': case_title(cfg),
@@ -1479,77 +1704,77 @@ def search_dam(cfg, x_centers, y_centers, radii):
     return prepared
 
 
-def plot_search(cases, grid_cfg, save_path=None):
-    n = len(cases)
-    fig, axes = plt.subplots(n, 1, figsize=(10.5, 5.8 * n), squeeze=False)
-    axes = axes[:, 0]
-
+def draw_search_panel(ax, fig, case, grid_cfg):
     ll_x = grid_cfg['lower_left_x']
     ll_y = grid_cfg['lower_left_y']
     width = grid_cfg['grid_width']
     height = grid_cfg['grid_height']
 
+    base = case['title'].split('—')[0].strip()
+    _draw_dam(ax, case['dam'], case['core'], case['reservoir_level'],
+              case['phreatic'], base, case.get('foundation'),
+              fill_name=case['fill']['name'],
+              concrete_face=case.get('concrete_face'))
+
+    ax.add_patch(Rectangle(
+        (ll_x, ll_y), width, height,
+        linewidth=1.4, edgecolor='royalblue', facecolor='none',
+        linestyle='--', zorder=4, label='Search grid',
+    ))
+
+    fos_grid = case['fos_grid']
+    x_c = case['x_centers']
+    y_c = case['y_centers']
+    dx = 0.5 * (x_c[1] - x_c[0]) if len(x_c) > 1 else 0.5
+    dy = 0.5 * (y_c[1] - y_c[0]) if len(y_c) > 1 else 0.5
+    x_edges = np.concatenate([x_c[:1] - dx, 0.5 * (x_c[1:] + x_c[:-1]),
+                              x_c[-1:] + dx])
+    y_edges = np.concatenate([y_c[:1] - dy, 0.5 * (y_c[1:] + y_c[:-1]),
+                              y_c[-1:] + dy])
+    X, Y = np.meshgrid(x_edges, y_edges)
+    cmap = plt.get_cmap('RdYlGn').copy()
+    cmap.set_bad(color='#d0d0d0', alpha=0.85)
+    display = np.ma.masked_invalid(np.clip(fos_grid, None, MAX_DISPLAY_FS))
+    im = ax.pcolormesh(
+        X, Y, display, cmap=cmap, vmin=0.0, vmax=MAX_DISPLAY_FS,
+        alpha=0.7, shading='flat', zorder=3,
+    )
+    cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.02)
+    cbar.set_label('Min. FS (grey = invalid)', fontsize=8)
+    cbar.ax.tick_params(labelsize=7)
+    finite = fos_grid[np.isfinite(fos_grid)]
+    if len(finite) and np.nanmax(finite) > MAX_DISPLAY_FS:
+        cbar.ax.text(0.5, 1.04, f'>{MAX_DISPLAY_FS:g}',
+                     transform=cbar.ax.transAxes,
+                     ha='center', va='bottom', fontsize=7)
+
+    xmin, xmax, ymin, ymax = polygon_bounds(case['dam'])
+    box = foundation_box(case['dam'], case.get('foundation'))
+    grid_mid = ll_x + 0.5 * width
+    dam_mid = 0.5 * (xmin + xmax)
+    grid_on_left = grid_mid <= dam_mid
+    fs_corner = 'upper right' if grid_on_left else 'upper left'
+    _draw_result(ax, case['result'], fs_corner=fs_corner)
+
+    y_top = max(ymax, ll_y + height)
+    if case['result'] is not None:
+        y_top = max(y_top, case['result']['center'][1])
+    pad = 0.08 * max(xmax - xmin, 1.0)
+    x0 = min(xmin, ll_x)
+    x1 = max(xmax, ll_x + width)
+    y0 = ymin
+    if box is not None:
+        x0 = min(x0, box['xmin'])
+        x1 = max(x1, box['xmax'])
+        y0 = box['ybot']
+    apply_plot_limits(ax)
+    _place_materials_legend(ax, grid_on_left, ll_y + 0.5 * height)
+
+
+def plot_search(cases, grid_cfg, save_path=None):
+    fig, axes = grid_figure(len(cases))
     for ax, case in zip(axes, cases):
-        _draw_dam(ax, case['dam'], case['core'], case['reservoir_level'],
-                  case['phreatic'], case['title'], case.get('foundation'),
-                  fill_name=case['fill']['name'],
-                  concrete_face=case.get('concrete_face'))
-
-        grid_patch = Rectangle(
-            (ll_x, ll_y), width, height,
-            linewidth=1.4, edgecolor='royalblue', facecolor='none',
-            linestyle='--', zorder=4, label='Search grid',
-        )
-        ax.add_patch(grid_patch)
-
-        fos_grid = case['fos_grid']
-        x_c = case['x_centers']
-        y_c = case['y_centers']
-        dx = 0.5 * (x_c[1] - x_c[0]) if len(x_c) > 1 else 0.5
-        dy = 0.5 * (y_c[1] - y_c[0]) if len(y_c) > 1 else 0.5
-        x_edges = np.concatenate([x_c[:1] - dx, 0.5 * (x_c[1:] + x_c[:-1]),
-                                  x_c[-1:] + dx])
-        y_edges = np.concatenate([y_c[:1] - dy, 0.5 * (y_c[1:] + y_c[:-1]),
-                                  y_c[-1:] + dy])
-        X, Y = np.meshgrid(x_edges, y_edges)
-        cmap = plt.get_cmap('RdYlGn').copy()
-        cmap.set_bad(color='#d0d0d0', alpha=0.85)
-        display = np.ma.masked_invalid(np.clip(fos_grid, None, MAX_DISPLAY_FS))
-        im = ax.pcolormesh(
-            X, Y, display, cmap=cmap, vmin=0.0, vmax=MAX_DISPLAY_FS,
-            alpha=0.7, shading='flat', zorder=3,
-        )
-        cbar = fig.colorbar(im, ax=ax, fraction=0.035, pad=0.02)
-        cbar.set_label('Minimum FS at centre (grey = no valid circle)')
-        finite = fos_grid[np.isfinite(fos_grid)]
-        if len(finite) and np.nanmax(finite) > MAX_DISPLAY_FS:
-            cbar.ax.text(0.5, 1.04, f'>{MAX_DISPLAY_FS:g}',
-                         transform=cbar.ax.transAxes,
-                         ha='center', va='bottom', fontsize=8)
-
-        xmin, xmax, ymin, ymax = polygon_bounds(case['dam'])
-        box = foundation_box(case['dam'], case.get('foundation'))
-        grid_mid = ll_x + 0.5 * width
-        dam_mid = 0.5 * (xmin + xmax)
-        grid_on_left = grid_mid <= dam_mid
-        fs_corner = 'upper right' if grid_on_left else 'upper left'
-        _draw_result(ax, case['result'], fs_corner=fs_corner)
-
-        y_top = max(ymax, ll_y + height)
-        if case['result'] is not None:
-            y_top = max(y_top, case['result']['center'][1])
-        pad = 0.08 * max(xmax - xmin, 1.0)
-        x0 = min(xmin, ll_x)
-        x1 = max(xmax, ll_x + width)
-        y0 = ymin
-        if box is not None:
-            x0 = min(x0, box['xmin'])
-            x1 = max(x1, box['xmax'])
-            y0 = box['ybot']
-        ax.set_xlim(x0 - 0.08 * (xmax - xmin), x1 + pad)
-        ax.set_ylim(y0 - 0.04 * (y_top - y0 + 1), Y_AXIS_MAX)
-        _place_materials_legend(ax, grid_on_left, ll_y + 0.5 * height)
-
+        draw_search_panel(ax, fig, case, grid_cfg)
     fig.tight_layout()
     if save_path:
         fig.savefig(save_path, dpi=160, bbox_inches='tight')
@@ -1560,17 +1785,16 @@ def plot_search(cases, grid_cfg, save_path=None):
 # ---------- main ------------------------------------------------------------
 
 def print_water_condition():
-    reservoir_level, phreatic_from_level = resolve_water_levels()
     print()
     if RAPID_DRAWDOWN:
-        print('Water condition : RAPID DRAWDOWN')
-        print(f'  Reservoir (empty)            : {reservoir_level:.2f} m')
-        print(f'  Phreatic line (from old pool): {phreatic_from_level:.2f} m')
-        print('  Search face                  : inner (upstream) slope')
+        print('Water condition : RAPID DRAWDOWN ANALYSIS')
+        print('  Reservoir (empty)            : dam base')
+        print('  Phreatic line                : first y of each dam polyline (old pool)')
+        print('  Search face                  : upstream slope')
     else:
-        print('Water condition : STEADY SEEPAGE')
-        print(f'  Reservoir and phreatic line  : {reservoir_level:.2f} m')
-        print('  Search face                  : outer (downstream) slope')
+        print('Water condition : INNER SLOPE ANALYSIS')
+        print('  Reservoir                    : first y of each dam phreatic line')
+        print('  Search face                  : downstream slope')
     print(f"Analysis mode    : "
           f"{'grid search for critical circle' if FIND_CRITICAL_CIRCLE else 'single slip circle'}")
 

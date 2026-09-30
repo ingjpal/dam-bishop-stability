@@ -36,3 +36,8 @@ Bishop grid search is slower than a single circle (often one to a few minutes). 
 4. Share the `*.streamlit.app` link with students.
 
 Calculation engines: `earthfill_dam_bishop.py` and `gravity_dam.py`. Interface: `app.py`.
+
+Short student manuals (also shown in the app under **Help**):
+
+- [help_bishop.md](help_bishop.md) — earthfill / rockfill Bishop analysis
+- [help_gravity.md](help_gravity.md) — concrete gravity dam checks

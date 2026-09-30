@@ -1,8 +1,9 @@
 """
 Concrete gravity-dam stability: overturning, sliding, bearing and heel tension.
 
-Formulas follow the classroom Gravity_Stability.py script (triangular section,
-vertical upstream face). Forces are per metre of dam length.
+The section matches a typical non-overflow monolith (crest, upstream batter,
+two-slope downstream face, foundation block). Weight is the concrete polygon
+times γc, per metre of dam length. Stability is evaluated on contact A–B.
 """
 
 from __future__ import annotations
@@ -13,8 +14,13 @@ import matplotlib.patches as patches
 
 DEFAULTS = {
     "H": 100.0,
-    "B": 10.0,
-    "hw": 45.0,
+    "B": 68.16,
+    "h_C": 64.56,
+    "n_up": 24.0,
+    "n_dn_u": 6.54,
+    "n_dn_l": 1.38,
+    "hw": 37.86,
+    "t_base": 11.65,
     "gamma_c": 24.0,
     "gamma_w": 9.81,
     "mu": 0.75,
@@ -24,11 +30,111 @@ DEFAULTS = {
     "k_v": 0.05,
 }
 
+GEOM_KEYS = ("H", "B", "h_C", "n_up", "n_dn_u", "n_dn_l", "hw", "t_base")
+
+
+def _num(name, value):
+    return DEFAULTS[name] if value is None else float(value)
+
+
+def _shoelace(pts):
+    n = len(pts)
+    acc = 0.0
+    cx = 0.0
+    cy = 0.0
+    for i in range(n):
+        x0, y0 = pts[i]
+        x1, y1 = pts[(i + 1) % n]
+        cross = x0 * y1 - x1 * y0
+        acc += cross
+        cx += (x0 + x1) * cross
+        cy += (y0 + y1) * cross
+    area = 0.5 * acc
+    if abs(area) < 1e-12:
+        return 0.0, 0.0, 0.0
+    return abs(area), cx / (6.0 * area), cy / (6.0 * area)
+
+
+def make_geometry(
+    H=None,
+    B=None,
+    h_C=None,
+    n_up=None,
+    n_dn_u=None,
+    n_dn_l=None,
+    hw=None,
+    t_base=None,
+):
+    """Dam polygon, crest width and centroid. Origin at heel A, x downstream."""
+    H = _num("H", H)
+    B = _num("B", B)
+    h_C = _num("h_C", h_C)
+    n_up = _num("n_up", n_up)
+    n_dn_u = _num("n_dn_u", n_dn_u)
+    n_dn_l = _num("n_dn_l", n_dn_l)
+    hw = _num("hw", hw)
+    t_base = _num("t_base", t_base)
+
+    if H <= 0 or B <= 0:
+        raise ValueError("Height H and base width B must be positive.")
+    if not (0.0 < h_C < H):
+        raise ValueError("Slope-break height C must lie between 0 and H.")
+    if min(n_up, n_dn_u, n_dn_l) <= 0:
+        raise ValueError("Slope 1/n values must be positive.")
+    if hw < 0 or hw > H:
+        raise ValueError("Water depth hw must satisfy 0 ≤ hw ≤ H.")
+
+    s_up = 1.0 / n_up
+    s_du = 1.0 / n_dn_u
+    s_dl = 1.0 / n_dn_l
+
+    x_cu = H * s_up
+    x_C = B - h_C * s_dl
+    x_cd = x_C - (H - h_C) * s_du
+    crest = x_cd - x_cu
+    if crest < 0.5:
+        raise ValueError(
+            "Crest width is too small (or negative). Increase B or steepen a slope."
+        )
+
+    vertices = [
+        (0.0, 0.0),
+        (B, 0.0),
+        (x_C, h_C),
+        (x_cd, H),
+        (x_cu, H),
+    ]
+    area, cx, cy = _shoelace(vertices)
+    return {
+        "H": H,
+        "B": B,
+        "h_C": h_C,
+        "n_up": n_up,
+        "n_dn_u": n_dn_u,
+        "n_dn_l": n_dn_l,
+        "hw": hw,
+        "t_base": t_base,
+        "s_up": s_up,
+        "x_cu": x_cu,
+        "x_cd": x_cd,
+        "x_C": x_C,
+        "crest": crest,
+        "vertices": vertices,
+        "area": area,
+        "cx": cx,
+        "cy": cy,
+    }
+
 
 def analyse(
     H=None,
     B=None,
+    h_C=None,
+    n_up=None,
+    n_dn_u=None,
+    n_dn_l=None,
     hw=None,
+    t_base=None,
     gamma_c=None,
     gamma_w=None,
     mu=None,
@@ -36,34 +142,44 @@ def analyse(
     q_all=None,
     k_h=None,
     k_v=None,
+    target_static=None,
+    target_seismic=None,
 ):
-    H = DEFAULTS["H"] if H is None else float(H)
-    B = DEFAULTS["B"] if B is None else float(B)
-    hw = DEFAULTS["hw"] if hw is None else float(hw)
-    gamma_c = DEFAULTS["gamma_c"] if gamma_c is None else float(gamma_c)
-    gamma_w = DEFAULTS["gamma_w"] if gamma_w is None else float(gamma_w)
-    mu = DEFAULTS["mu"] if mu is None else float(mu)
-    c = DEFAULTS["c"] if c is None else float(c)
-    q_all = DEFAULTS["q_all"] if q_all is None else float(q_all)
-    k_h = DEFAULTS["k_h"] if k_h is None else float(k_h)
-    k_v = DEFAULTS["k_v"] if k_v is None else float(k_v)
+    g = make_geometry(
+        H=H, B=B, h_C=h_C, n_up=n_up, n_dn_u=n_dn_u, n_dn_l=n_dn_l,
+        hw=hw, t_base=t_base,
+    )
+    gamma_c = _num("gamma_c", gamma_c)
+    gamma_w = _num("gamma_w", gamma_w)
+    mu = _num("mu", mu)
+    c = _num("c", c)
+    q_all = _num("q_all", q_all)
+    k_h = _num("k_h", k_h)
+    k_v = _num("k_v", k_v)
 
-    W = 0.5 * B * H * gamma_c
+    H, B, hw = g["H"], g["B"], g["hw"]
+    cx, cy, area = g["cx"], g["cy"], g["area"]
+    s_up = g["s_up"]
+
+    W = area * gamma_c
     Fw = 0.5 * gamma_w * hw ** 2
+    Fw_v = Fw * s_up
     U = 0.5 * gamma_w * hw * B
 
     F_Eh = W * k_h
     F_Ev = W * k_v
     F_wd = 0.583 * k_h * gamma_w * hw ** 2
 
-    sum_V = W - U - F_Ev
+    sum_V = W - U - F_Ev - Fw_v
     sum_H = Fw + F_Eh + F_wd
 
-    M_resisting = (W * (2.0 / 3.0 * B)) - (F_Ev * (2.0 / 3.0 * B))
+    lever_W = B - cx
+    x_Fv = s_up * hw / 3.0
+    M_resisting = (W * lever_W) - (F_Ev * lever_W) - (Fw_v * (B - x_Fv))
     M_overturning = (
         (Fw * (hw / 3.0))
         + (U * (2.0 / 3.0 * B))
-        + (F_Eh * (H / 3.0))
+        + (F_Eh * cy)
         + (F_wd * (0.4 * hw))
     )
 
@@ -76,7 +192,9 @@ def analyse(
     q_heel = (sum_V / B) * (1 - (6 * e) / B)
 
     seismic = not (k_h == 0 and k_v == 0)
-    target_FoS = 1.3 if seismic else 1.5
+    t_static = 1.5 if target_static is None else float(target_static)
+    t_seismic = 1.3 if target_seismic is None else float(target_seismic)
+    target_FoS = t_seismic if seismic else t_static
     FoS_O = M_resisting / M_overturning if M_overturning != 0 else float("inf")
     resisting_H = mu * sum_V + c * B
     FoS_S = resisting_H / sum_H if sum_H != 0 else float("inf")
@@ -86,10 +204,8 @@ def analyse(
     pass_B = q_toe <= q_all
     pass_C = q_heel >= 0
 
-    return {
-        "H": H,
-        "B": B,
-        "hw": hw,
+    out = dict(g)
+    out.update({
         "gamma_c": gamma_c,
         "gamma_w": gamma_w,
         "mu": mu,
@@ -100,6 +216,7 @@ def analyse(
         "seismic": seismic,
         "W": W,
         "Fw": Fw,
+        "Fw_v": Fw_v,
         "U": U,
         "F_Eh": F_Eh,
         "F_Ev": F_Ev,
@@ -122,11 +239,82 @@ def analyse(
         "pass_S": pass_S,
         "pass_B": pass_B,
         "pass_C": pass_C,
-    }
+    })
+    return out
 
 
 def _verdict(ok):
     return "PASS" if ok else "FAIL"
+
+
+def _draw_body(ax, g, with_labels=True):
+    H, B, hw = g["H"], g["B"], g["hw"]
+    t_base = g["t_base"]
+    verts = g["vertices"]
+    x_C, h_C = g["x_C"], g["h_C"]
+    x_cu, x_cd = g["x_cu"], g["x_cd"]
+
+    ground_x0 = -0.22 * B
+    ground_x1 = B + 0.22 * B
+    ax.add_patch(patches.Polygon(
+        [(ground_x0, -1.65 * t_base), (ground_x1, -1.65 * t_base),
+         (ground_x1, 0.0), (ground_x0, 0.0)],
+        facecolor="#c5d6e8", edgecolor="none", zorder=0, label="Ground",
+    ))
+    ax.add_patch(patches.Rectangle(
+        (0.0, -t_base), B, t_base,
+        facecolor="#8b5a2b", edgecolor="black", lw=1.4, zorder=1, label="Base",
+    ))
+    ax.add_patch(patches.Polygon(
+        verts, facecolor="#d9d4cc", edgecolor="black", lw=1.8, zorder=2,
+        label="Dam",
+    ))
+
+    if hw > 0:
+        x_int = min(hw * g["s_up"], x_cu)
+        ax.add_patch(patches.Polygon(
+            [(ground_x0, 0.0), (0.0, 0.0), (x_int, hw), (ground_x0, hw)],
+            facecolor="dodgerblue", alpha=0.35, edgecolor="none", zorder=1,
+            label="Reservoir",
+        ))
+        ax.axhline(hw, color="dodgerblue", ls=":", lw=1, zorder=3)
+
+    ax.plot([ground_x0, ground_x1], [0, 0], "k-", lw=2.2, zorder=3)
+
+    if with_labels:
+        ax.plot(0, 0, "k.", ms=7, zorder=5)
+        ax.plot(B, 0, "k.", ms=7, zorder=5)
+        ax.plot(x_C, h_C, "k.", ms=7, zorder=5)
+        ax.text(0, -0.04 * H, "A", ha="center", va="top", fontsize=8, fontweight="bold")
+        ax.text(B, -0.04 * H, "B", ha="center", va="top", fontsize=8, fontweight="bold")
+        ax.text(x_C + 0.02 * B, h_C, "C", ha="left", va="bottom", fontsize=8, fontweight="bold")
+        ax.text(B * 0.5, -0.55 * t_base, f"Base {B:.1f} m", ha="center", va="center",
+                fontsize=7, color="white", fontweight="bold", zorder=4)
+        mid_up = 0.45 * H
+        ax.annotate(
+            f"1/{g['n_up']:g}",
+            xy=(mid_up * g["s_up"], mid_up),
+            xytext=(-0.12 * B, mid_up),
+            fontsize=7, ha="right", va="center", color="#1b6b2a",
+            arrowprops=dict(arrowstyle="->", color="#1b6b2a", lw=1),
+        )
+        mid_du_y = 0.5 * (h_C + H)
+        mid_du_x = 0.5 * (x_C + x_cd)
+        ax.annotate(
+            f"1/{g['n_dn_u']:g}",
+            xy=(mid_du_x, mid_du_y),
+            xytext=(mid_du_x + 0.12 * B, mid_du_y + 0.04 * H),
+            fontsize=7, color="#1b6b2a",
+            arrowprops=dict(arrowstyle="->", color="#1b6b2a", lw=1),
+        )
+        mid_dl_y = 0.5 * h_C
+        mid_dl_x = 0.5 * (B + x_C)
+        ax.text(mid_dl_x + 0.02 * B, mid_dl_y, f"1/{g['n_dn_l']:g}",
+                fontsize=7, color="#1b6b2a")
+
+    ax.set_aspect("equal", adjustable="box")
+    ax.set_xlim(ground_x0, ground_x1)
+    ax.set_ylim(-1.75 * t_base, H * 1.14)
 
 
 def plot_mechanisms(r):
@@ -136,30 +324,15 @@ def plot_mechanisms(r):
     resisting_H = r["resisting_H"]
     q_toe, q_heel, q_all = r["q_toe"], r["q_heel"], r["q_all"]
     k_h = r["k_h"]
+    cx, cy = r["cx"], r["cy"]
     x_resultant, e, e_max = r["x_resultant"], r["e"], r["e_max"]
     FoS_O, FoS_S = r["FoS_O"], r["FoS_S"]
 
-    fig, axs = plt.subplots(2, 2, figsize=(14, 12))
+    fig, axs = plt.subplots(2, 2, figsize=(11.2, 9.6))
     fig.suptitle("Visualizing Forces per Failure Mechanism", fontsize=16, fontweight="bold")
 
     def draw_base_geometry(ax, title):
-        dam = patches.Polygon(
-            [(0, H), (0, 0), (B, 0)],
-            facecolor="lightgray",
-            edgecolor="black",
-            lw=2,
-        )
-        water = patches.Polygon(
-            [(-B / 1.5, hw), (0, hw), (0, 0), (-B / 1.5, 0)],
-            facecolor="dodgerblue",
-            alpha=0.3,
-        )
-        ax.add_patch(dam)
-        ax.add_patch(water)
-        ax.plot([-B / 1.5, B * 1.4], [0, 0], "k-", lw=3)
-        ax.set_aspect("equal")
-        ax.set_xlim(-B / 1.5, B * 1.4)
-        ax.set_ylim(-H * 0.4, H * 1.1)
+        _draw_body(ax, r, with_labels=False)
         ax.set_title(title, fontweight="bold")
         ax.axis("off")
 
@@ -172,8 +345,8 @@ def plot_mechanisms(r):
     ax_O.text(B + 2, 2, "Pivot (Toe)", fontweight="bold")
     ax_O.annotate(
         "Weight (Resisting)",
-        xy=(B / 3, H / 3),
-        xytext=(B / 3, H / 3 + W * scale_f),
+        xy=(cx, cy),
+        xytext=(cx, cy + W * scale_f),
         arrowprops=dict(facecolor="forestgreen", width=3, headwidth=10),
         ha="center",
         color="forestgreen",
@@ -197,15 +370,14 @@ def plot_mechanisms(r):
     if k_h > 0:
         ax_O.annotate(
             "Seismic (Driving)",
-            xy=(B / 3, H / 3),
-            xytext=(B / 3 - F_Eh * scale_f, H / 3),
+            xy=(cx, cy),
+            xytext=(cx - F_Eh * scale_f, cy),
             arrowprops=dict(facecolor="crimson", width=3, headwidth=10),
             va="center",
             color="crimson",
         )
     ax_O.text(
-        B * 0.5,
-        H * 0.9,
+        B * 0.5, H * 0.92,
         f"FoS: {FoS_O:.2f} [{_verdict(r['pass_O'])}]",
         bbox=dict(facecolor="white", edgecolor="black"),
     )
@@ -232,8 +404,7 @@ def plot_mechanisms(r):
         fontweight="bold",
     )
     ax_S.text(
-        B * 0.5,
-        H * 0.9,
+        B * 0.5, H * 0.92,
         f"FoS: {FoS_S:.2f} [{_verdict(r['pass_S'])}]",
         bbox=dict(facecolor="white", edgecolor="black"),
     )
@@ -256,17 +427,12 @@ def plot_mechanisms(r):
         fontweight="bold",
     )
     ax_B.text(
-        B,
-        -q_toe * scale_q - 3,
+        B, -q_toe * scale_q - 3,
         f"Max Compressive Stress\n{q_toe:.0f} kPa",
-        ha="center",
-        va="top",
-        color="darkred",
-        fontweight="bold",
+        ha="center", va="top", color="darkred", fontweight="bold",
     )
     ax_B.text(
-        B * 0.5,
-        H * 0.9,
+        B * 0.5, H * 0.92,
         f"Toe Stress vs Allowable ({q_all:g} kPa) [{_verdict(r['pass_B'])}]",
         bbox=dict(facecolor="white", edgecolor="black"),
     )
@@ -290,12 +456,46 @@ def plot_mechanisms(r):
         ax_C.text(0, 5, "TENSION ZONE\nCracking Risk!", ha="center", color="crimson", fontweight="bold")
         ax_C.plot(0, 0, marker="X", color="crimson", ms=15)
     ax_C.text(
-        B * 0.5,
-        H * 0.9,
+        B * 0.5, H * 0.92,
         f"Eccentricity: {e:.2f}m (Max {e_max:.2f}m) [{_verdict(r['pass_C'])}]",
         bbox=dict(facecolor="white", edgecolor="black"),
     )
 
+    fig.tight_layout()
+    return fig
+
+
+def draw_section(ax, H=None, B=None, hw=None, result=None, **kwargs):
+    """Draw the gravity section onto an existing axis."""
+    if result is not None:
+        g = result
+    else:
+        g = make_geometry(H=H, B=B, hw=hw, **kwargs)
+    _draw_body(ax, g, with_labels=True)
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("y (m)")
+    ax.set_title("Gravity dam", fontsize=12, fontweight="bold")
+    ax.grid(True, alpha=0.3)
+    ax.legend(loc="upper right", fontsize=7, framealpha=0.92)
+    if result is not None and "FoS_O" in result:
+        mark = lambda ok: "PASS" if ok else "FAIL"
+        ax.text(
+            0.02, 0.98,
+            f"Overturning {result['FoS_O']:.2f} [{mark(result['pass_O'])}]\n"
+            f"Sliding {result['FoS_S']:.2f} [{mark(result['pass_S'])}]\n"
+            f"Toe {result['q_toe']:.0f} kPa [{mark(result['pass_B'])}]\n"
+            f"Heel {'compr.' if result['pass_C'] else 'TENSION'} [{mark(result['pass_C'])}]",
+            transform=ax.transAxes, ha="left", va="top",
+            fontsize=8, fontweight="bold", zorder=12,
+            bbox=dict(boxstyle="round,pad=0.35", facecolor="#fff6b0",
+                      edgecolor="#c0392b", linewidth=1.2),
+        )
+
+
+def plot_section(H=None, B=None, hw=None, **kwargs):
+    """Single-panel cross-section for geometry preview (no safety checks)."""
+    fig, ax = plt.subplots(figsize=(8.4, 5.6))
+    draw_section(ax, H=H, B=B, hw=hw, **kwargs)
     fig.tight_layout()
     return fig
 
